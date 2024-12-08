@@ -48,7 +48,7 @@ class PrioQueue(object):
         if self._highest_priority == 0:
             LOGGER.warning("Highest priority allowed is 0, this is effectively a list?")
 
-        self._tasks = {x:collections.deque() for x in range(0,self.max_prio+1)}
+        self._task_dict = {x:collections.deque() for x in range(0,self.max_prio+1)}
         self._taskcount = 0
 
     def _conform_priority(self, priority: int, on_init=False):
@@ -56,11 +56,17 @@ class PrioQueue(object):
         
         Effectively, this is a truncate-to-zero function with an upper
         range set at module init time.
+
+        Raises TypeError if you supply a non-conformable priority (like 'NOW')
         """
 
-        # always range out negatives
-        if priority < 0:
-            return 0
+        # always range out negatives. this step will also catch the issue of
+        # malformed priority codes
+        try:
+            if priority < 0:
+                return 0
+        except TypeError: # 
+            raise TypeError(f"Priority '{priority}' is not a valid priority.")
         
         # if at initialisation, we have no state information so let it through
         # TODO: find a more elegant way to do this. Maybe classmethod with a param
@@ -92,7 +98,9 @@ class PrioQueue(object):
     def push(self, command, priority):
         """put the command into storage into it's correct priority ordering
         
-        Raises ValueError if the queue is full"""
+        Raises ValueError if the queue is full.
+        
+        Returns the command dict with the timestamp accepted, this allows checking of the conformed priority"""
         command_dict = {"command": command,
          "priority": self._conform_priority(priority),
          "add_time": datetime.datetime.now()}
@@ -100,9 +108,10 @@ class PrioQueue(object):
         if self.max_size is not None and self.count == self.max_size:
             raise ValueError(f"PrioQueue at capacity {self.max_size}, cannot add")
         
-        self._tasks[command_dict["priority"]].append(command_dict)
+        self._task_dict[command_dict["priority"]].append(command_dict)
         self._taskcount+=1
 
+        return command_dict
 
     def pop(self):
         """Attempt to get the next task that this queue thinks should be executed. 
@@ -114,19 +123,20 @@ class PrioQueue(object):
         # early bail, since the other case we walk backwards through the dict
         if self.count < 1:
             return None
-        
 
         # walk backwards
         for priority in range (self.max_prio, -1, -1):  # this really still bugs me I need a -1
             try:
-                next_task = self._tasks[priority].popleft()
+                next_task = self._task_dict[priority].popleft()
             except IndexError:
                 continue # nothing in this prio level
-            self._tasks-=1
+            self._taskcount-=1
             return next_task
-        else: # this 
-            return None
-
+        
+        # if you have a working self.count trap, this clause
+        # can't be hit
+        # else:
+        #     return None
 
 
     
