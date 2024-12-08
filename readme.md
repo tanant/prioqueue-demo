@@ -1,4 +1,4 @@
-# prioqueue
+# PrioQueue
 
 ## Description
 Simple priority queue - assumes an incoming stream of dictionaries containing two keys; command to be executed and priority. Priority is an integer value [0, 10], where work items of the same priority are processed in the order they are received. 
@@ -6,6 +6,9 @@ Simple priority queue - assumes an incoming stream of dictionaries containing tw
 0 is considered *low* priority and 10 is considered high (to be executed first)
 
 ## Design notes
+
+### Scope
+PrioQueue is only really concerned with priority insertion, there is no sane/safing done around the command, it's taken as a simple string that the client can use as storage. Possible improvement would be a lookahead function so a client can check what the next command is and validate it could be done before a pop as there's no capability for a push-back, once popped a command can never be-reinserted in it's old position which could be an issue.
 
 ### Priority mangling
 For the PrioQueue we'll be trying to operate in a safe method expecting this to be something that's directly behind an artist frontend so it'll try conform priority inputs as much as possible (because an artist might try crank prio to 11, or split the difference between 5 and 6).
@@ -15,6 +18,8 @@ What this means is non-integer priorites will all be integerized towards zero, r
 - priority 100, 10.5 -> 10
 - priority 1, 1.2, 1.9 -> 1
 - priority -1 -> 0
+
+If you supply a text string  ("Max") this is an error however.
 
 ### Boundary conditions (no tasks, and too many)
 When pushing a new task onto the priority queue an overflow condition is considered an exception to signal out as the action can't be completed.
